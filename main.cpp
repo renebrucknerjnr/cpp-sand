@@ -2,9 +2,9 @@
 
 #include <SDL2/SDL.h>
 #include <iostream>
+#include "Random.h"
 
-int main() {
-    
+int main() {    
     if (!(SDL_Init(SDL_INIT_EVERYTHING) == 0)) {
         std::cout << "Failed to initialize everything" << std::endl;
         SDL_Quit();
@@ -12,7 +12,7 @@ int main() {
     }
     const int width = 800;
     const int height = 600;
-    const int blockScale = 8; // block width / height?
+    const int blockScale = 3; // block width / height in pixels
 
     int blockWidth = width / blockScale; // width of board in blocks
     int blockHeight = height / blockScale; // height of board in blocks
@@ -85,7 +85,7 @@ int main() {
 
                     // Boundary Check
                     if (y >= blockHeight - 1) {
-                        buffer1[i] = 1;
+                        buffer1[i] = buffer2[i];
                         continue;
                     }
 
@@ -100,23 +100,23 @@ int main() {
                     bool canD2 = (y < blockHeight-3 && buffer2[d2] == 0 && buffer1[d2] == 0);
 
                     if (canD2) {
-                        buffer1[d2] = 1;
+                        buffer1[d2] = buffer2[i];
                     }
                     else if (canDown) {
-                        buffer1[down] = 1;
+                        buffer1[down] = buffer2[i];
                     } 
                     else {
                         // Per-pixel random choice to break up patterns
                         bool tryLeft = ((i ^ frameIndex) * 0x45d9f3b) & 1;
 
                         if (tryLeft) {
-                            if (canLeft)        buffer1[dl] = 1;
-                            else if (canRight)  buffer1[dr] = 1;
-                            else                buffer1[i] = 1;
+                            if (canLeft)        buffer1[dl] = buffer2[i];
+                            else if (canRight)  buffer1[dr] = buffer2[i];
+                            else                buffer1[i] = buffer2[i];
                         } else {
-                            if (canRight)       buffer1[dr] = 1;
-                            else if (canLeft)   buffer1[dl] = 1;
-                            else                buffer1[i] = 1;
+                            if (canRight)       buffer1[dr] = buffer2[i];
+                            else if (canLeft)   buffer1[dl] = buffer2[i];
+                            else                buffer1[i] = buffer2[i];
                         }
                     }
                 }
@@ -133,7 +133,7 @@ int main() {
                     int y = cy + j;
                     if (y < 0 || y >= blockHeight) continue;
                     if (i*i + j*j > mouseFillRadius*mouseFillRadius) continue; // circle
-                    buffer1[x + y*blockWidth] = mouseLeftDown ? 1 : 0;
+                    buffer1[x + y*blockWidth] = mouseLeftDown ? (floor(blueHash(x+frameIndex, y+frameTime)*3) + 1) : 0;
                 }
             }
         }
@@ -174,15 +174,42 @@ int main() {
                         buffer2[i] = 0;
                     }
                 } else if (event.key.keysym.sym == SDLK_1) {
-                    mouseFillRadius = 0;
+                    mouseFillRadius = 0*(10/blockScale);
                 } else if (event.key.keysym.sym == SDLK_2) {
-                    mouseFillRadius = 1;
+                    mouseFillRadius = 1*(10/blockScale);
                 } else if (event.key.keysym.sym == SDLK_3) {
-                    mouseFillRadius = 2;
+                    mouseFillRadius = 2*(10/blockScale);
                 } else if (event.key.keysym.sym == SDLK_4) {
-                    mouseFillRadius = 4;
+                    mouseFillRadius = 4*(10/blockScale);
                 } else if (event.key.keysym.sym == SDLK_5) {
-                    mouseFillRadius = 8;
+                    mouseFillRadius = 8*(10/blockScale);
+                } else if (event.key.keysym.sym == SDLK_f) {
+                    for (int j = 0; j < blockHeight; j++) {
+                        for (int i = 0; i < blockWidth; i++) {
+                            buffer1[i + j*blockWidth] = floor(fractHash(i+frameTime, j+frameIndex)*4);
+                        }
+                    }
+                }
+                break;
+
+            case (SDL_KEYDOWN):
+                if (event.key.keysym.sym == SDLK_q) {
+                    for (int i = 0; i < blockWidth; i++) {
+                        buffer1[i] = rand() % blockWidth ? 0 : (rand()%3 + 1);
+                        buffer1[i + blockCount-blockWidth] = rand() % blockWidth ? buffer1[i + blockCount-blockWidth] : 0;
+                    }
+                } else if (event.key.keysym.sym == SDLK_w) {
+                    for (int i = 0; i < blockWidth; i++) {
+                        buffer1[i] = rand() % (blockWidth/2) ? 0 : (rand()%3 + 1);
+                    }
+                } else if (event.key.keysym.sym == SDLK_e) {
+                    for (int i = 0; i < blockWidth; i++) {
+                        buffer1[i] = floor(fractHash(i, frameIndex+frameTime)*(blockWidth/2)) ? 0 : (floor(fractHash(i+frameTime, frameIndex)*3) + 1);
+                    }
+                } else if (event.key.keysym.sym == SDLK_r) {
+                    for (int i = 0; i < blockWidth; i++) {
+                        buffer1[i] = floor(blueHash(i, frameIndex+frameTime)*(blockWidth/2)) ? 0 : (floor(blueHash(i+frameTime, frameIndex)*3) + 1);
+                    }
                 }
                 break;
 
@@ -193,7 +220,7 @@ int main() {
 
 
         // clear
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(renderer, 52, 90, 159, 255);
         SDL_RenderClear(renderer);
 
         // draw
@@ -202,7 +229,14 @@ int main() {
 
             SDL_Rect r = {(i%blockWidth)*blockScale, (int)(i/blockWidth)*blockScale, blockScale, blockScale};
             // SDL_SetRenderDrawColor(renderer, rand()%128+128, rand()%128+128, rand()%128+128, 255);
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            if (buffer1[i] == 1)
+                SDL_SetRenderDrawColor(renderer, 168, 128, 55, 255);
+            else if (buffer1[i] == 2)
+                SDL_SetRenderDrawColor(renderer, 194, 149, 68, 255);
+            else if (buffer1[i] == 3)
+                SDL_SetRenderDrawColor(renderer, 203, 165, 96, 255);
+            else
+                SDL_SetRenderDrawColor(renderer, 213, 182, 125, 255);
             SDL_RenderFillRect(renderer, &r);
             // SDL_SetRenderDrawColor(renderer, 191, 191, 191, 255);
             // SDL_RenderDrawRect(renderer, &r);
