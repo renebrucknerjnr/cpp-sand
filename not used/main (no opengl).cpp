@@ -63,4 +63,4 @@ int main()
 // pacman -S mingw-w64-x86_64-glfw
 // pacman -S mingw-w64-x86_64-vulkan-devel
 
-// cd "/c/users/administrator/desktop/glfw sandsim"; clear; g++ -o run.exe "main (no opengl).cpp" -I"C:/msys64/mingw64/include" -L"C:/msys64/mingw64/lib" -lglfw3 -lgdi32 -luser32 -static-libgcc -static-libstdc++ -static; ./run.exe
+// g++ -o run.exe "main (no opengl).cpp" -I"C:/msys64/mingw64/include" -L"C:/msys64/mingw64/lib" -lglfw3 -lgdi32 -luser32 -static-libgcc -static-libstdc++ -static; ./run.exe
