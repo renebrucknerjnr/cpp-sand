@@ -1,0 +1,6 @@
+cd cpp-sand/code
+
+sudo dnf install SDL2 SDL2-devel
+
+g++ -o run Random.cpp main.cpp -lSDL2 -pthread;
+
