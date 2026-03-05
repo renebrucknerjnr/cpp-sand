@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <stdint.h>
 
 using uint = unsigned int;
 
@@ -30,3 +31,10 @@ double hash12(vec2<int> p);
 
 double fractHash(int x, int y);
 double blueHash(int x, int y);
+
+void sgenrand(unsigned long seed);
+double genrand();
+
+double zenry(int x, int y);
+
+double biasedZenry(int x, int y, double b, double I);

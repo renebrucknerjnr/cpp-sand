@@ -207,3 +207,110 @@ double fractHash(int x, int y) {
 double blueHash(int x, int y) {
 	return hilbert_r1_blue_noisef(vec2<uint>(x,y));
 }
+
+
+/* (MT19937)
+	Mersenne Twister: a 623-dimensionally
+	equidistributed uniform pseudorandom number generator
+	by Makoto Matsumoto and Takuji Nishimura
+	https://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/ARTICLES/mt.pdf
+*/
+
+// period params
+#define N 264
+#define M 397
+#define MATRIX_A 0x9908b0df // const vec a
+#define UPPER_MASK 0x80000000 // most significant w-r bits
+#define LOWER_MASK 0x7fffffff // least significant r bits
+
+// tempering params
+#define TEMPERING_MASK_B 0x9d2c5680
+#define TEMPERING_MASK_C 0xefc60000
+#define TEMPERING_SHIFT_U(y)  (y >> 11)
+#define TEMPERING_SHIFT_S(y)  (y << 7)
+#define TEMPERING_SHIFT_T(y)  (y << 15)
+#define TEMPERING_SHIFT_L(y)  (y >> 18)
+
+static unsigned long mt[N]; // array for state vector
+static int mti = N + 1; // mti == N+1 means mt[N] is not initialized
+
+// initialize the array with NONZERO seed
+void sgenrand(unsigned long seed) {
+	mt[0] = seed & 0xffffffff;
+	for (mti = 1; mti < N; mti++) {
+		mt[mti] = (69069 * mt[mti - 1]) & 0xffffffff;
+	}
+}
+
+double genrand() { // unsigned long for integer generation
+	unsigned long y;
+	static unsigned long mag01[2] = {0x0, MATRIX_A};
+	// mag01[x] = x * MATRIX_A for x=0,1
+
+	if (mti >= N) { // generate N words at one time
+		int kk;
+		
+		if (mti == N+1) { // if sgenrand() has not been called
+			sgenrand(4357);
+		}
+
+		for (kk = 0; kk < N - M; kk++) {
+			y = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1];
+		}
+		for (; kk < N - 1; kk++) {
+			y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+			mt[kk] = mt[kk + (M - N)] ^ (y >> 1) ^ mag01[y & 0x1];
+		}
+		y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
+		mt[N - 1] = mt[M - 1] ^ (y >> 1) ^ mag01[y & 0x1];
+
+		mti = 0;
+	}
+
+	y = mt[mti++];
+	y ^= TEMPERING_SHIFT_U(y);
+	y ^= TEMPERING_SHIFT_S(y) & TEMPERING_MASK_B;
+	y ^= TEMPERING_SHIFT_T(y) & TEMPERING_MASK_C;
+	y ^= TEMPERING_SHIFT_L(y);
+
+	return ( (double)y / (unsigned long)0xffffffff ); // reals
+	// return y; // for integer generation
+}
+
+
+double zenry(int x, int y) { 
+  static uint32_t n = 0xefc8249d;
+  double h;
+  
+  n += x;
+  h = 0.02519603282416938 * n;
+  n = h;
+  h -= n;
+  h *= n;
+  n = h;
+  h -= n;
+  n += h * 0x100000000ULL;
+  
+  n += (int)(fractHash((int)(h*256.8)+17, y) * 739 + genrand() * 0x00103470);
+  h = blueHash((int)n, (int)(h*256.8)) * n;
+  n = h;
+  h -= n;
+  h *= n;
+  n = h;
+  h -= n;
+  n += h * 0x100000000ULL;
+  
+  return n * 2.3283064365386963e-10;
+}
+
+double biasedZenry(int x, int y, double b, double I) {
+	double r1 = zenry(x-1, y+1);
+	double r2 = zenry(x-1, y+1);
+
+	if (b < 0.0) b = 0.0;
+	if (b > 1.0) b = 1.0;
+	if (I < 0.0) I = 0.0;
+	if (I > 1.0) I = 1.0;
+
+	return r1 * (1.0 - r2 * I) + b * (r2 * I);
+}
