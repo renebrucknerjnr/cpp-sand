@@ -217,7 +217,7 @@ double blueHash(int x, int y) {
 */
 
 // period params
-#define N 264
+#define N 624
 #define M 397
 #define MATRIX_A 0x9908b0df // const vec a
 #define UPPER_MASK 0x80000000 // most significant w-r bits
@@ -255,7 +255,9 @@ double genrand() { // unsigned long for integer generation
 		}
 
 		for (kk = 0; kk < N - M; kk++) {
-			y = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1];
+			// y = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1]; // uses y before it's set
+			y = (mt[kk] & UPPER_MASK) | (mt[kk+1] & LOWER_MASK); // does not
+			mt[kk] = mt[kk + M] ^ (y >> 1) ^ mag01[y & 1]; // does not
 		}
 		for (; kk < N - 1; kk++) {
 			y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
@@ -305,7 +307,7 @@ double zenry(int x, int y) {
 
 double biasedZenry(int x, int y, double b, double I) {
 	double r1 = zenry(x-1, y+1);
-	double r2 = zenry(x-1, y+1);
+	double r2 = zenry(x+1, y-1);
 
 	if (b < 0.0) b = 0.0;
 	if (b > 1.0) b = 1.0;
